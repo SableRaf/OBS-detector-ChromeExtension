@@ -3,7 +3,8 @@
     "name": "OBS Detector",
     "version": "1.0",
     "permissions": [
-        "activeTab"
+        "activeTab",
+        "storage"
     ],
     "background": {
         "service_worker": "background.js"
