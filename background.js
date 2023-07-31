@@ -1,6 +1,6 @@
-const OBS_WEBSOCKET_PORT = 4444;
 let isConnected = false;
 let ws;
+let currentPort = 4444; // Default value
 
 console.log("Background service worker started."); // Log when the background script starts.
 
@@ -10,11 +10,11 @@ function attemptConnection() {
     ws = null;
   }
 
-  ws = new WebSocket(`ws://localhost:${OBS_WEBSOCKET_PORT}/`);
+  ws = new WebSocket(`ws://localhost:${currentPort}/`);
 
   ws.onopen = function () {
     isConnected = true;
-    console.log("Connected to OBS WebSocket."); // Log successful connection.
+    console.log("Connected to OBS WebSocket on port:", currentPort); // Log successful connection.
 
     // Update icon or badge to show connected status
     chrome.action.setBadgeText({ text: "ON" });
@@ -28,20 +28,36 @@ function attemptConnection() {
     // Update icon or badge to show disconnected status
     chrome.action.setBadgeText({ text: "OFF" });
     chrome.action.setBadgeBackgroundColor({ color: "#F00" });
+
+    // Try reconnecting after CHECK_INTERVAL
+    setTimeout(attemptConnection, CHECK_INTERVAL);
   };
 
   ws.onerror = function (error) {
     isConnected = false;
-    console.log("Unable to connect to OBS WebSocket. It might not be running.");
+    console.log(
+      "Unable to connect to OBS WebSocket on port:",
+      currentPort,
+      ". It might not be running."
+    );
   };
 }
 
-// Attempt the connection immediately upon script start
-attemptConnection();
+// Get the saved port from chrome.storage.local
+chrome.storage.local.get("obsWebSocketPort", function (data) {
+  if (data.obsWebSocketPort) {
+    currentPort = parseInt(data.obsWebSocketPort, 10);
+  }
+  attemptConnection(); // Attempt the connection immediately after getting the port
+});
 
-// Then try connecting every 30 seconds
-const CHECK_INTERVAL = 10000; // 30 seconds in milliseconds
-setInterval(attemptConnection, CHECK_INTERVAL);
+// Listen for changes in chrome.storage.local
+chrome.storage.onChanged.addListener(function (changes, areaName) {
+  if (areaName === "local" && changes.obsWebSocketPort) {
+    currentPort = parseInt(changes.obsWebSocketPort.newValue, 10);
+    attemptConnection(); // Restart the connection when the port is updated
+  }
+});
 
 // Listener to respond to messages from popup or other parts of your extension
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
