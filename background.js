@@ -26,7 +26,16 @@ ws.onclose = function (event) {
 
 ws.onerror = function (error) {
   isConnected = false;
-  console.error("Error with OBS WebSocket connection:", error); // Log errors with WebSocket.
+
+  // Instead of logging the full error (which can be verbose), log a more user-friendly message
+  console.log("Unable to connect to OBS WebSocket. It might not be running.");
+
+  // If needed, you can uncomment the line below to log the full error for debugging purposes.
+  // console.error("Error with OBS WebSocket connection:", error);
+
+  // Update icon or badge to show error status
+  chrome.action.setBadgeText({ text: "ERR" });
+  chrome.action.setBadgeBackgroundColor({ color: "#F00" });
 };
 
 // Listener to respond to messages from popup or other parts of your extension
