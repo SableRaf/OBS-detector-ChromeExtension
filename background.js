@@ -1,10 +1,16 @@
 let isConnected = false;
 let ws;
 let currentPort = 4444; // Default value
+let CHECK_INTERVAL = 5000; // 5 seconds
 
 console.log("Background service worker started."); // Log when the background script starts.
 
-function attemptConnection() {
+function attemptConnection(forceReconnect = false) {
+  if (isConnected && !forceReconnect) {
+    console.log("Already connected to OBS WebSocket on port:", currentPort);
+    return; // exit the function if already connected and not forcefully reconnecting
+  }
+
   if (ws) {
     ws.close();
     ws = null;
@@ -14,7 +20,7 @@ function attemptConnection() {
 
   ws.onopen = function () {
     isConnected = true;
-    console.log("Connected to OBS WebSocket on port:", currentPort); // Log successful connection.
+    console.log("Connected to OBS WebSocket on port:", currentPort);
 
     // Update icon or badge to show connected status
     chrome.action.setBadgeText({ text: "ON" });
@@ -55,7 +61,7 @@ chrome.storage.local.get("obsWebSocketPort", function (data) {
 chrome.storage.onChanged.addListener(function (changes, areaName) {
   if (areaName === "local" && changes.obsWebSocketPort) {
     currentPort = parseInt(changes.obsWebSocketPort.newValue, 10);
-    attemptConnection(); // Restart the connection when the port is updated
+    attemptConnection(true); // Restart the connection when the port is updated
   }
 });
 
