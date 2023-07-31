@@ -1,42 +1,47 @@
 const OBS_WEBSOCKET_PORT = 4444;
 let isConnected = false;
+let ws;
 
 console.log("Background service worker started."); // Log when the background script starts.
 
-// Create a WebSocket connection
-const ws = new WebSocket(`ws://localhost:${OBS_WEBSOCKET_PORT}/`);
+function attemptConnection() {
+  if (ws) {
+    ws.close();
+    ws = null;
+  }
 
-ws.onopen = function () {
-  isConnected = true;
-  console.log("Connected to OBS WebSocket."); // Log successful connection.
+  ws = new WebSocket(`ws://localhost:${OBS_WEBSOCKET_PORT}/`);
 
-  // Update icon or badge to show connected status
-  chrome.action.setBadgeText({ text: "ON" });
-  chrome.action.setBadgeBackgroundColor({ color: "#0F0" });
-};
+  ws.onopen = function () {
+    isConnected = true;
+    console.log("Connected to OBS WebSocket."); // Log successful connection.
 
-ws.onclose = function (event) {
-  isConnected = false;
-  console.log("Disconnected from OBS WebSocket.", event.reason); // Log disconnection and potential reasons.
+    // Update icon or badge to show connected status
+    chrome.action.setBadgeText({ text: "ON" });
+    chrome.action.setBadgeBackgroundColor({ color: "#0F0" });
+  };
 
-  // Update icon or badge to show disconnected status
-  chrome.action.setBadgeText({ text: "OFF" });
-  chrome.action.setBadgeBackgroundColor({ color: "#F00" });
-};
+  ws.onclose = function (event) {
+    isConnected = false;
+    console.log("Disconnected from OBS WebSocket.", event.reason); // Log disconnection and potential reasons.
 
-ws.onerror = function (error) {
-  isConnected = false;
+    // Update icon or badge to show disconnected status
+    chrome.action.setBadgeText({ text: "OFF" });
+    chrome.action.setBadgeBackgroundColor({ color: "#F00" });
+  };
 
-  // Instead of logging the full error (which can be verbose), log a more user-friendly message
-  console.log("Unable to connect to OBS WebSocket. It might not be running.");
+  ws.onerror = function (error) {
+    isConnected = false;
+    console.log("Unable to connect to OBS WebSocket. It might not be running.");
+  };
+}
 
-  // If needed, you can uncomment the line below to log the full error for debugging purposes.
-  // console.error("Error with OBS WebSocket connection:", error);
+// Attempt the connection immediately upon script start
+attemptConnection();
 
-  // Update icon or badge to show error status
-  chrome.action.setBadgeText({ text: "ERR" });
-  chrome.action.setBadgeBackgroundColor({ color: "#F00" });
-};
+// Then try connecting every 30 seconds
+const CHECK_INTERVAL = 10000; // 30 seconds in milliseconds
+setInterval(attemptConnection, CHECK_INTERVAL);
 
 // Listener to respond to messages from popup or other parts of your extension
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
